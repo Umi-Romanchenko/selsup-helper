@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SelSup Barcode Helper — Управление штрихкодами</title>
+    <meta name="description" content="Расширение для Chrome, которое позволяет массово включать и выключать штрихкоды в таблице массового редактирования SelSup.">
+    
+    <style>
+        :root {
+            --primary: #00a7e7;
+            --primary-dark: #0086b9;
+            --primary-light: #e0f4fc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --border: #e2e8f0;
+            --accent: #fb8c00;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* --- HERO SECTION --- */
+        .hero {
+            padding: 100px 0 80px;
+            text-align: center;
+            background: radial-gradient(circle at 50% -20%, var(--primary-light) 0%, var(--bg-main) 60%);
+            position: relative;
+        }
+
+        .badge {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            letter-spacing: 0.5px;
+        }
+
+        h1 {
+            font-size: clamp(36px, 5vw, 56px);
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            margin-bottom: 24px;
+            color: var(--text-main);
+        }
+
+        .hero p {
+            font-size: clamp(16px, 2vw, 20px);
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+
+        .btn-download {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 600;
+            padding: 18px 40px;
+            border-radius: 16px;
+            transition: all 0.2s ease;
+            box-shadow: 0 10px 25px rgba(0, 167, 231, 0.3);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-download:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(0, 167, 231, 0.4);
+        }
+
+        .btn-download svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* --- MOCKUP SECTION --- */
+        .mockup-wrapper {
+            margin-top: 60px;
+            position: relative;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .mockup-window {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mockup-header {
+            background: #f1f5f9;
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dot.red { background: #ef4444; }
+        .dot.yellow { background: #f59e0b; }
+        .dot.green { background: #10b981; }
+
+        .mockup-body {
+            padding: 24px;
+            background: #ffffff;
+            min-height: 300px;
+            position: relative;
+        }
+
+        /* Имитация таблицы SelSup */
+        .mock-table {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            opacity: 0.4;
+        }
+        .mock-row { display: flex; gap: 12px; }
+        .mock-cell { background: #f1f5f9; height: 40px; border-radius: 6px; flex: 1; }
+        .mock-cell.wide { flex: 3; }
+        .mock-cell.short { flex: 0.5; }
+
+        /* Имитация всплывающего окна расширения */
+        .mock-popup {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2), 0 0 0 1px var(--border);
+            width: 280px;
+            padding: 16px;
+            z-index: 10;
+        }
+        .mock-popup-header {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .mock-btn-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .mock-btn {
+            flex: 1;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            background: #f1f5f9;
+            color: var(--text-muted);
+        }
+        .mock-btn.active {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            border: 1px solid var(--primary);
+        }
+        .mock-save-btn {
+            background: #10b981;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        /* --- FEATURES SECTION --- */
+        .section {
+            padding: 80px 0;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+
+        .grid-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            padding: 32px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.05);
+        }
+
+        .icon-box {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .icon-box svg { width: 24px; height: 24px; }
+
+        .feature-card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        /* --- HOW TO SECTION --- */
+        .how-to {
+            background: white;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 32px;
+            counter-reset: step;
+        }
+
+        .step {
+            position: relative;
+            padding-top: 20px;
+        }
+
+        .step::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            top: -20px;
+            left: 0;
+            width: 48px;
+            height: 48px;
+            background: var(--primary);
+            color: white;
+            font-size: 20px;
+            font-weight: 700;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 167, 231, 0.3);
+        }
+
+        .step h4 {
+            font-size: 18px;
+            margin: 16px 0 8px;
+        }
+
+        .step p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        code {
+            background: #f1f5f9;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-family: monospace;
+            color: var(--primary-dark);
+            font-weight: 600;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            padding: 40px 0;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .hero { padding: 60px 0 40px; }
+            .mock-popup { display: none; } /* На мобилках скрываем мокап попапа */
+            .steps { counter-reset: none; }
+            .step::before { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HERO -->
+    <header class="hero">
+        <div class="container">
+            <div class="badge">Версия 1.4.0 · Chrome / Edge</div>
+            <h1>Массовое управление ШК в SelSup</h1>
+            <p>Управляйте штрихкодами для WB, Ozon и Яндекс.Маркет в один клик. Без сложных модальных окон и опасных автопостингов.</p>
+            
+            <!-- Ссылка на скачивание твоего архива -->
+            <a href="selsup-helper.zip" download class="btn-download">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Скачать расширение
+            </a>
+
+            <!-- Визуальный мокап -->
+            <div class="mockup-wrapper">
+                <div class="mockup-window">
+                    <div class="mockup-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                    </div>
+                    <div class="mockup-body">
+                        <!-- Задний фон (имитация таблицы) -->
+                        <div class="mock-table">
+                            <div class="mock-row"><div class="mock-cell short"></div><div class="mock-cell wide"></div><div class="mock-cell"></div><div class="mock-cell"></div></div>
+                            <div class="mock-row"><div class="mock-cell short"></div><div class="mock-cell wide"></div><div class="mock-cell"></div><div class="mock-cell"></div></div>
+                            <div class="mock-row"><div class="mock-cell short"></div><div class="mock-cell wide"></div><div class="mock-cell"></div><div class="mock-cell"></div></div>
+                            <div class="mock-row"><div class="mock-cell short"></div><div class="mock-cell wide"></div><div class="mock-cell"></div><div class="mock-cell"></div></div>
+                        </div>
+                        
+                        <!-- Передний план (попап расширения) -->
+                        <div class="mock-popup">
+                            <div class="mock-popup-header">SelSup Barcode Helper</div>
+                            <div class="mock-btn-group">
+                                <div class="mock-btn">Включить</div>
+                                <div class="mock-btn active">Выключить</div>
+                            </div>
+                            <div class="mock-btn-group">
+                                <div class="mock-btn">Первый</div>
+                                <div class="mock-btn active">Второй</div>
+                            </div>
+                            <div class="mock-btn-group">
+                                <div class="mock-btn active">WB</div>
+                                <div class="mock-btn active">Ozon</div>
+                                <div class="mock-btn">ЯМ</div>
+                            </div>
+                            <div class="mock-save-btn">💾 Применить и сохранить</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- FEATURES -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Почему это удобно</h2>
+                <p>Забудьте про сотни кликов в модальных окнах</p>
+            </div>
+            
+            <div class="grid-features">
+                <div class="feature-card">
+                    <div class="icon-box">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <h3>Скорость</h3>
+                    <p>Один клик — и ШК изменены у всех строк, попавших в фильтр. Больше не нужно открывать каждую карточку.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon-box">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    </div>
+                    <h3>Безопасность</h3>
+                    <p>Никаких автопостингов. Изменения уходят на сервер только после того, как вы явно нажмете кнопку «Сохранить».</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon-box">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    </div>
+                    <h3>Визуальный контроль</h3>
+                    <p>Сначала вы видите предпросмотр прямо в таблице. Если что-то не так — нажимаете F5, и данные возвращаются.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW TO -->
+    <section class="section how-to">
+        <div class="container">
+            <div class="section-header">
+                <h2>Установка за 1 минуту</h2>
+                <p>Не требует прав администратора или специальных знаний</p>
+            </div>
+
+            <div class="steps">
+                <div class="step">
+                    <h4>Скачайте архив</h4>
+                    <p>Нажмите кнопку выше и распакуйте скачанный файл <code>selsup-helper.zip</code> в любую папку.</p>
+                </div>
+                <div class="step">
+                    <h4>Откройте расширения</h4>
+                    <p>В адресной строке браузера введите <code>chrome://extensions/</code> и нажмите Enter.</p>
+                </div>
+                <div class="step">
+                    <h4>Режим разработчика</h4>
+                    <p>В правом верхнем углу включите переключатель «Режим разработчика» (Developer mode).</p>
+                </div>
+                <div class="step">
+                    <h4>Загрузите</h4>
+                    <p>Нажмите «Загрузить распакованное» и выберите папку, которую распаковали в шаге 1. Готово!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <p style="margin-top: 8px; font-size: 12px; opacity: 0.7;">Расширение не аффилировано с SelSup.</p>
+        </div>
+    </footer>
+
+</body>
+</html>
